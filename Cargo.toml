@@ -1,0 +1,33 @@
+[workspace]
+members = [
+    "c2rust-asm-casts",
+    "c2rust-ast-builder",
+    "c2rust-ast-exporter",
+    "c2rust-ast-printer",
+    "c2rust-bitfields",
+    "c2rust-bitfields-derive",
+    "c2rust-build-paths",
+    "c2rust-transpile",
+    "ccm"
+]
+exclude = [
+    "analysis/tests",
+    "c2rust-macros",
+    "c2rust-refactor",
+    "examples",
+    "tests",
+]
+
+[workspace.package]
+version = "0.17.0"
+authors = ["Regina Liu <reginaliuyx@gmail.com>"]
+edition = "2021"
+readme = "README.md"
+homepage = "https://github.com/regexyl/clippy-c2rust-mapping/"
+repository = "https://github.com/regexyl/clippy-c2rust-mapping/"
+license = "BSD-3-Clause"
+keywords = ["transpiler", "migration", "translation", "c"]
+categories = ["development-tools", "development-tools::ffi", "command-line-utilities"]
+
+[profile.dev.package."*"]
+opt-level = 3

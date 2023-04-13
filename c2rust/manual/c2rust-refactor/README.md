@@ -1,1 +1,0 @@
-../../c2rust-refactor/README.md

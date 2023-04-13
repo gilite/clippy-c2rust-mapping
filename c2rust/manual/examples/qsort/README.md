@@ -1,1 +1,0 @@
-../../../examples/qsort/README.md

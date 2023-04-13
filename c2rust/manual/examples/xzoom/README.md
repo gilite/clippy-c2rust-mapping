@@ -1,1 +1,0 @@
-../../../examples/xzoom/README.md

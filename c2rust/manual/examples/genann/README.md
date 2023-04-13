@@ -1,1 +1,0 @@
-../../../examples/genann/README.md

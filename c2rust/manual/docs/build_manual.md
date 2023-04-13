@@ -1,1 +1,0 @@
-../../docs/build_manual.md

@@ -1,1 +1,0 @@
-../../../examples/tmux/README.md

@@ -1,7 +1,7 @@
 use std::env;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::process::{Command};
-use std::io::{self, BufRead};
+use std::process::{Command, Stdio};
 
 // debug exe: /media/psf/Home/Desktop/is470/clippy-c2rust-mapping/target/debug/ccm
 
@@ -25,7 +25,7 @@ fn main() {
         .expect("Failed to execute command");
 
     if output.status.success() {
-        println!("⚡ Starting C-to-Rust mappings...\n");
+        println!("⚡ Starting C-to-Rust mappings...");
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         println!("Command failed: {}", stderr);
@@ -42,48 +42,63 @@ fn main() {
         .expect("Failed to get current directory")
         .join("compile_commands.json")];
     let mut binding = Command::new(&c2rust_transpiile_path);
-    let output = binding
-        .args(args);
-        // .output()
-        // .expect("Failed to execute command");
+    let mut output = binding
+        .args(args)
+        .stdout(Stdio::piped())
+        .spawn()
+    // .output()
+    .expect("Failed to execute command");
+
+    let stdout = output.stdout.take().unwrap();
+    let reader = BufReader::new(stdout);
+    for line in reader.lines() {
+        println!("{}", line.unwrap());
+    }
+
+    let status = output.wait().unwrap();
+    println!("Command exited with status: {}", status);
 
     // Print transpile output
-    let mut child = output.spawn().unwrap();
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
-    let mut stdout_reader = io::BufReader::new(stdout);
-    let mut stderr_reader = io::BufReader::new(stderr);
+    // TODO: output is getting stuck on 'Transpiling test-localcharset.c' - find out how to unblock
+    // let mut child = output.spawn().unwrap();
+    // let stdout = child.stdout.take().unwrap();
+    // let stderr = child.stderr.take().unwrap();
+    // let mut stdout_reader = io::BufReader::new(stdout);
+    // let mut stderr_reader = io::BufReader::new(stderr);
 
-    loop {
-        let mut line = String::new();
-        let stdout_bytes_read = stdout_reader.read_line(&mut line).unwrap();
-        if stdout_bytes_read == 0 {
-            println!("output loop exited");
-            break;
-        }
-        print!("{}", line);
-    }
+    // loop {
+    //     let mut line = String::new();
+    //     let stdout_bytes_read = stdout_reader.read_line(&mut line).unwrap();
+    //     if stdout_bytes_read == 0 {
+    //         println!("output loop exited");
+    //         break;
+    //     }
+    //     print!("{}", line);
+    //     io::stdout().flush().unwrap();
+        
+    // }
 
-    loop {
-        let mut line = String::new();
-        let stderr_bytes_read = stderr_reader.read_line(&mut line).unwrap();
-        if stderr_bytes_read == 0 {
-            println!("err loop exited");
-            break;
-        }
-        print!("{}", line);
-    }
+    // loop {
+    //     let mut line = String::new();
+    //     let stderr_bytes_read = stderr_reader.read_line(&mut line).unwrap();
+    //     if stderr_bytes_read == 0 {
+    //         println!("err loop exited");
+    //         break;
+    //     }
+    //     print!("{}", line);
+    //     io::stdout().flush().unwrap();
+    // }
 
-    child.kill().unwrap();
-    
-    match child.wait() {
-        Ok(status) => {
-            println!("Command exited with status: {}", status);
-        }
-        Err(error) => {
-            eprintln!("Error waiting for command to exit: {}", error);
-        }
-    }
+    // child.kill().unwrap();
+
+    // match child.wait() {
+    //     Ok(status) => {
+    //         println!("Command exited with status: {}", status);
+    //     }
+    //     Err(error) => {
+    //         eprintln!("Error waiting for command to exit: {}", error);
+    //     }
+    // }
 
     // if output.status.success() {
     //     println!("Succesfully executed C2Rust.")

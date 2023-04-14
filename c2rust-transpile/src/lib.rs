@@ -247,6 +247,7 @@ pub fn transpile(tcfg: TranspilerConfig, cc_db: &Path, extra_clang_args: &[&str]
     let mut num_transpiled_files = 0;
     let mut transpiled_modules = Vec::new();
     let build_dir = get_build_dir(&tcfg, cc_db);
+
     for lcmd in &lcmds {
         let cmds = &lcmd.cmd_inputs;
         let lcmd_name = lcmd
@@ -472,6 +473,10 @@ fn transpile_single(
         Ok(cxt) => cxt,
     };
 
+    // Mark - LOC is included
+    // SrcFile { path: Some("/usr/include/aarch64-linux-gnu/asm/types.h"), include_loc: Some(SrcLoc { fileid: 56, line: 5, column: 10 }) }
+    // println!("Untyped context: {:?}", untyped_context);
+
     println!("Transpiling {}", file);
 
     if tcfg.dump_untyped_context {
@@ -479,8 +484,21 @@ fn transpile_single(
         println!("{:#?}", untyped_context);
     }
 
-    // Convert this into a typed AST
+    // Convert this into a typed AST - mark
     let typed_context = {
+        // Mark - LOC is included
+        //  [
+        //     SrcLoc {
+        //         fileid: 117,
+        //         line: 24,
+        //         column: 10,
+        //     },
+        //     SrcLoc {
+        //         fileid: 117,
+        //         line: 171,
+        //         column: 10,
+        //     },
+        // ],
         let conv = ConversionContext::new(&untyped_context);
         if conv.invalid_clang_ast && tcfg.fail_on_error {
             panic!("Clang AST was invalid");

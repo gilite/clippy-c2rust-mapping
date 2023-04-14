@@ -217,6 +217,7 @@ fn parse_attributes(attributes: Vec<Value>) -> IndexSet<Attribute> {
 }
 
 /// This stores the information needed to convert an `AstContext` into a `TypedAstContext`.
+#[derive(Debug)]
 pub struct ConversionContext {
     /// Keeps track of the mapping between IDs used by clang (old) and the AST importer (new)
     pub id_mapper: IdMapper,

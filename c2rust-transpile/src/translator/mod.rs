@@ -1,10 +1,11 @@
 use std::cell::RefCell;
-use std::char;
 use std::collections::HashMap;
+use std::io::Write;
 use std::mem;
 use std::ops::Index;
 use std::path::{self, PathBuf};
-use std::result::Result; // To override syn::Result from glob import
+use std::result::Result;
+use std::{char, fs}; // To override syn::Result from glob import
 
 use dtoa;
 
@@ -13,6 +14,7 @@ use indexmap::indexmap;
 use indexmap::{IndexMap, IndexSet};
 use log::{error, info, trace, warn};
 use proc_macro2::{Punct, Spacing::*, Span, TokenStream, TokenTree};
+use quote::{quote, ToTokens};
 use syn::spanned::Spanned as _;
 use syn::*;
 use syn::{BinOp, UnOp}; // To override c_ast::{BinOp,UnOp} from glob import
@@ -492,6 +494,7 @@ pub fn translate(
     tcfg: &TranspilerConfig,
     main_file: PathBuf,
 ) -> (String, PragmaVec, CrateSet) {
+    // println!("{:?}", ast_context);
     let mut t = Translation::new(ast_context, tcfg, main_file.as_path());
     let ctx = ExprContext {
         used: true,
@@ -545,7 +548,7 @@ pub fn translate(
             if let CDeclKind::Typedef { ref name, typ, .. } = decl.kind {
                 if let Some(subdecl_id) = t
                     .ast_context
-                    .resolve_type(typ.ctype)
+                    .resolve_type(typ.ctype) // mark - get loc info here?
                     .kind
                     .as_underlying_decl()
                 {
@@ -581,10 +584,10 @@ pub fn translate(
                     {
                         prenamed_decls.insert(decl_id, subdecl_id);
 
-                        t.type_converter
+                        t.type_converter // mark
                             .borrow_mut()
                             .declare_decl_name(decl_id, name);
-                        t.type_converter
+                        t.type_converter // mark
                             .borrow_mut()
                             .alias_decl_name(subdecl_id, decl_id);
                     }
@@ -621,12 +624,12 @@ pub fn translate(
             match decl_name {
                 Name::None => (),
                 Name::Anonymous => {
-                    t.type_converter
+                    t.type_converter // mark
                         .borrow_mut()
                         .declare_decl_name(decl_id, "C2RustUnnamed");
                 }
                 Name::Type(name) => {
-                    t.type_converter
+                    t.type_converter // mark
                         .borrow_mut()
                         .declare_decl_name(decl_id, name);
                 }
@@ -643,6 +646,7 @@ pub fn translate(
                     *t.cur_file.borrow_mut() = decl_file_id;
                 }
                 match t.convert_decl(ctx, decl_id) {
+                    // mark
                     Err(e) => {
                         let k = &t.ast_context.get_decl(&decl_id).map(|x| &x.kind);
                         let msg = format!("Skipping declaration {:?} due to error: {}", k, e);
@@ -652,13 +656,16 @@ pub fn translate(
                         use ConvertedDecl::*;
                         match converted_decl {
                             Item(item) => {
+                                // mark - check if LOC is added here
                                 t.insert_item(item, decl);
                             }
                             ForeignItem(item) => {
+                                // mark - check if LOC is added here
                                 t.insert_foreign_item(*item, decl);
                             }
                             Items(items) => {
                                 for item in items {
+                                    // mark - check if LOC is added here
                                     t.insert_item(item, decl);
                                 }
                             }
@@ -675,7 +682,7 @@ pub fn translate(
                 }
             };
 
-            // Export all types
+            // mark - Export all types
             for (&decl_id, decl) in t.ast_context.iter_decls() {
                 use CDeclKind::*;
                 let needs_export = match decl.kind {
@@ -691,12 +698,12 @@ pub fn translate(
                     _ => false,
                 };
                 if needs_export {
-                    convert_type(decl_id, decl);
+                    convert_type(decl_id, decl); // mark - converts all declarations in a file
                 }
             }
         }
 
-        // Export top-level value declarations
+        // mark - Export top-level value declarations
         for top_id in &t.ast_context.c_decls_top {
             use CDeclKind::*;
             let needs_export = match t.ast_context[*top_id].kind {
@@ -717,6 +724,7 @@ pub fn translate(
                     *t.cur_file.borrow_mut() = decl_file_id;
                 }
                 match t.convert_decl(ctx, *top_id) {
+                    // mark
                     Err(e) => {
                         let decl = &t.ast_context.get_decl(top_id);
                         let msg = match decl {
@@ -739,13 +747,16 @@ pub fn translate(
                         use ConvertedDecl::*;
                         match converted_decl {
                             Item(item) => {
+                                // mark - check if LOC is added here
                                 t.insert_item(item, decl);
                             }
                             ForeignItem(item) => {
+                                // mark - check if LOC is added here
                                 t.insert_foreign_item(*item, decl);
                             }
                             Items(items) => {
                                 for item in items {
+                                    // mark - check if LOC is added here
                                     t.insert_item(item, decl);
                                 }
                             }
@@ -765,8 +776,13 @@ pub fn translate(
 
         // Add the main entry point
         if let Some(main_id) = t.ast_context.c_main {
+            // println!("*****");
             match t.convert_main(main_id) {
-                Ok(item) => t.items.borrow_mut()[&t.main_file].add_item(item),
+                // mark - first instance of item addition to t.items.borrow_mut()[&t.main_file]
+                Ok(item) => {
+                    // println!("{:#?}", item);
+                    t.items.borrow_mut()[&t.main_file].add_item(item)
+                }
                 Err(e) => {
                     let msg = format!("Failed to translate main: {}", e);
                     translate_failure(t.tcfg, &msg)
@@ -779,6 +795,7 @@ pub fn translate(
             let (initializer_fn, initializer_static) = t.generate_global_static_init();
             let store = &mut t.items.borrow_mut()[&t.main_file];
 
+            // mark - second (and last) instance of item addition to t.items.borrow_mut()[&t.main_file]
             store.add_item(initializer_fn);
             store.add_item(initializer_static);
         }
@@ -815,6 +832,7 @@ pub fn translate(
         }
 
         // Main file item store
+        // mark - find [&t.main_file]
         let (items, foreign_items, uses) = t.items.borrow_mut()[&t.main_file].drain();
 
         // Re-order comments
@@ -875,15 +893,50 @@ pub fn translate(
                 all_items.push(mk().extern_("C").foreign_items(foreign_items));
             }
 
+            let items_str = items.iter()
+                .map(|item| quote!(#item).to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+
             // Add the items accumulated
             all_items.extend(items);
 
             //s.print_remaining_comments();
-            syn::File {
+            let result = syn::File {
                 shebang: None,
                 attrs,
                 items: all_items.into_iter().map(|x| *x).collect(),
-            }
+            };
+
+            // Debug
+            let current_exe_path = std::env::current_exe().unwrap();
+            let parent_path = current_exe_path
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap();
+            let pprint_inputs_path = parent_path.join("pprint_inputs");
+
+            let new_file_path = pprint_inputs_path.join(
+                main_file
+                    .file_name()
+                    .unwrap()
+                    .to_owned()
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+                    + "-output.txt",
+            );
+
+            let file_path = pprint_inputs_path.join(new_file_path);
+            // let file_contents_str = quote!(#result).into_token_stream().to_string();
+
+            let mut file = fs::File::create(file_path).unwrap();
+            file.write_all(items_str.as_bytes()).unwrap();
+
+            result
         });
         (translation, pragmas, crates)
     }

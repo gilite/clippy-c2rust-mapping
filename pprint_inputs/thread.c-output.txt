@@ -1,0 +1,4 @@
+pub type pthread_t = libc :: c_ulong ;
+# [derive ( Copy , Clone )] # [repr ( C )] pub union pthread_attr_t { pub __size : [libc :: c_char ; 64] , pub __align : libc :: c_long }
+pub type gl_thread_t = pthread_t ;
+# [no_mangle] pub unsafe extern "C" fn gl_thread_create (mut func : Option :: < unsafe extern "C" fn (* mut libc :: c_void) -> * mut libc :: c_void > :: , mut arg : * mut libc :: c_void) -> gl_thread_t { let mut thread : gl_thread_t = 0 ; let mut ret : libc :: c_int = 0 ; ret = if 1 as libc :: c_int != 0 { pthread_create (& mut thread , 0 as * const pthread_attr_t , func , arg) } else { 38 as libc :: c_int } ; if ret != 0 as libc :: c_int { abort () ; } return thread ; }

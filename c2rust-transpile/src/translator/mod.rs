@@ -57,6 +57,19 @@ use crate::PragmaVec;
 pub const INNER_SUFFIX: &str = "_Inner";
 pub const PADDING_SUFFIX: &str = "_PADDING";
 
+// IS470 mark - custom store for C2Rust line mappings
+pub struct C2RustItem {
+    begin_line_c: u64,
+    end_line_c: u64,
+    // begin_line_rust: u64,
+    // end_line_rust: u64,
+    begin_column_c: u64,
+    end_column_c: u64,
+    // begin_column_rust: u64,
+    // begin_column_rust: 64,
+    rust_item: Item,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DecayRef {
     Yes,
@@ -643,7 +656,12 @@ pub fn translate(
             let convert_type = |decl_id: CDeclId, decl: &CDecl| {
                 let decl_file_id = t.ast_context.file_id(decl);
                 if t.tcfg.reorganize_definitions {
-                    *t.cur_file.borrow_mut() = decl_file_id;
+                    // something
+                    *t.cur_file.borrow_mut()
+                    // something
+                     =
+                    // something
+                     decl_file_id;
                 }
                 match t.convert_decl(ctx, decl_id) {
                     // mark
@@ -893,6 +911,7 @@ pub fn translate(
                 all_items.push(mk().extern_("C").foreign_items(foreign_items));
             }
 
+            // mark
             let items_str = items.iter()
                 .map(|item| quote!(#item).to_string())
                 .collect::<Vec<_>>()
@@ -938,6 +957,8 @@ pub fn translate(
 
             result
         });
+
+        // TODO: add back pprint function (original)
         (translation, pragmas, crates)
     }
 }
